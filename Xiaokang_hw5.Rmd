@@ -1,0 +1,152 @@
+---
+title: "Homework 5" 
+# subtitle: "possible subtitle goes here"
+author:
+  - Xiaokang Liu
+date: "`r format(Sys.time(), '%d %B %Y')`"
+documentclass: article
+papersize: letter
+fontsize: 11pt
+output:
+  bookdown::pdf_document2
+---
+
+
+```{r setup, echo = FALSE, message = FALSE, warning = FALSE}
+## some utility functions, see the source code for details
+source("utils_template.R")
+
+## specify the packages needed
+pkgs <- "ggplot2"
+need.packages(pkgs)
+
+## external data can be read in by regular functions,
+## such as read.table or load
+
+## for latex and html output
+isHtml <- knitr::is_html_output()
+isLatex <- knitr::is_latex_output()
+latex <- ifelse(isLatex, '\\LaTeX\\', 'LaTeX')
+
+## specify global chunk options
+knitr::opts_chunk$set(fig.width = 5, fig.height = 4, dpi = 300,
+                      out.width = "90%", fig.align = "center")
+
+```
+
+# Finite mixture regression
+## Follow the lecture notes to verify the validity of the provided E-step and M-step.
+Based on the lecture notes, we have
+$$
+Q(\Psi|\Psi^{k+1})=E(l^c_n(\Psi)|x,y,\Psi^{k+1})
+$$
+Since the complete log-likelihood can be written as 
+$$
+l_n^c(\Psi)=\sum_{i=1}^n \sum_{j=1}^m z_{ij} \log\{\pi_j \phi(y_i-x_i'\beta_j;0,\sigma^2\},
+$$
+and notice that, only $z_{ij}$ is the unknown part in the complete data, the expectation with respect to the complete data will affect $z_{ij}$ only. So we have
+\begin{align*}
+Q(\Psi|\Psi^{k+1})&=\sum_{i=1}^n \sum_{j=1}^m E(z_{ij}|x_i,y_i,\Psi^{k}) \log\{\pi_j \phi(y_i-x_i'\beta_j;0,\sigma^2\}\\
+&=\sum_{i=1}^n \sum_{j=1}^m p_{ij}^{(k+1)} \log\{\pi_j \phi(y_i-x_i'\beta_j;0,\sigma^2\}.
+\end{align*}
+
+Then we consider $p_{ij}^{(k+1)}$, since $z_{ij}$ only takes two values, 1 and 0, its conditional expectation is just the conditional probability of taking value 1. Then based on Bayes rule, we have
+\begin{align*}
+p_{ij}^{(k+1)}&=E(x_{ij}|x_i,y_i,\Psi^{k})\\
+&=p(x_{ij}|x_i,y_i,\Psi^{k})\\
+&=\frac{\pi_j^{(k)}\phi(y_i-x_i'\beta_j;0,\sigma^{2(k)})}{\sum_{j=1}^m \pi_j^{(k)}\phi(y_i-x_i'\beta_j;0,\sigma^{2(k)})}.
+\end{align*}
+
+Then by taking first order derivative of funtion $Q(\Psi|\Psi^{k+1})$ with respect to $\{\pi_j\}$, $\beta_j,j=1,\ldots,m$ and $\sigma^2$ seperately, and set them to be 0, we can get the MLE of these parameters. 
+
+## Implement this algorithm in R
+```{r}
+regmix_em <- function(y,xmat,pi.init,beta.init,sigma.init,
+                      control=list(max.ite,con.tol)){
+  n <- length(y)
+  p <- ncol(xmat)
+  k <- ncol(beta.init)
+  err <- 100
+  ite <- 0
+  conver <- 0
+  max.ite <- control[[1]]
+  con.tol <- control[[2]]
+  xmat <- as.matrix(xmat)
+  while ((err > con.tol)&(ite < max.ite)) {
+    p.mat <- matrix(nrow = n, ncol = k)
+    for (i in 1:n){
+      for (j in 1:k){
+        p.mat[i,j] <- pi.init[j]*dnorm(y[i]-t(xmat[i,])%*%beta.init[,j],0,sigma.init)/sum(pi.init*dnorm(y[i]-t(xmat[i,])%*%beta.init,0,sigma.init))
+      }
+    }
+    pi.ite <- apply(p.mat,2,mean)
+    beta.ite <- matrix(nrow = p, ncol = k)
+    for (j in 1:k){
+      upp <- 0
+      low <- 0
+      for (i in 1:n){
+        upp <- upp+xmat[i,]%*%t(xmat[i,])*p.mat[i,j]
+        low <- low+xmat[i,]*y[i]*p.mat[i,j]
+      }
+      beta.ite[,j] <- solve(upp)%*%low
+    }
+    sigma2.ite <- 0
+    for (j in 1:k){
+      sigma2.ite <- sigma2.ite+sum((p.mat[,j]*(y-xmat%*%beta.ite[,j])^2))
+    }
+    sigma.ite <- sqrt(sigma2.ite/n)
+    #err <- sqrt(sum((pi.ite-pi.init)^2)+sum((beta.ite-beta.init)^2)+
+    #            sum((sigma.ite-sigma.init)^2))
+    err <- sum(abs(pi.ite-pi.init))+sum(abs(beta.ite-beta.init))+
+                sum(abs(sigma.ite-sigma.init))
+    pi.init <- pi.ite
+    beta.init <- beta.ite
+    sigma.init <- sigma.ite
+    ite <- ite+1
+  }
+  if (ite >= max.ite) conver <- 1
+  return(list(pi.est=pi.init, beta.est=beta.init, 
+              sigma.est=sigma.init, converge=conver))
+}
+```
+
+## Generate data to test the algorithm
+```{r}
+regmix_sim <- function(n, pi, beta, sigma) {
+    K <- ncol(beta)
+    p <- nrow(beta)
+    xmat <- matrix(rnorm(n * p), n, p) # normal covaraites
+    error <- matrix(rnorm(n * K, sd = sigma), n, K)
+    ymat <- xmat %*% beta + error # n by K matrix
+    ind <- t(rmultinom(n, size = 1, prob = pi))
+    y <- rowSums(ymat * ind)
+    data.frame(y, xmat)
+}
+
+n <- 400
+pi <- c(.3, .4, .3)
+bet <- matrix(c( 1,  1,  1, 
+                -1, -1, -1), 2, 3)
+sig <- 1
+set.seed(1205)
+dat <- regmix_sim(n, pi, bet, sig)
+regmix_em(y = dat[,1], xmat = dat[,-1], 
+           pi.init = pi / pi / length(pi),
+           #beta.init = matrix(c( 1,  2,  3, 
+           #      -1, -1, -1), 2, 3),
+           beta.init = bet * 0,
+           sigma.init = sig / sig, 
+           control = list(max.ite = 500, con.tol = 1e-5))
+```
+
+
+
+
+
+
+
+
+
+
+
+
