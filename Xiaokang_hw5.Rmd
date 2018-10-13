@@ -57,7 +57,14 @@ p_{ij}^{(k+1)}&=E(x_{ij}|x_i,y_i,\Psi^{k})\\
 &=\frac{\pi_j^{(k)}\phi(y_i-x_i'\beta_j;0,\sigma^{2(k)})}{\sum_{j=1}^m \pi_j^{(k)}\phi(y_i-x_i'\beta_j;0,\sigma^{2(k)})}.
 \end{align*}
 
-Then by taking first order derivative of funtion $Q(\Psi|\Psi^{k+1})$ with respect to $\{\pi_j\}$, $\beta_j,j=1,\ldots,m$ and $\sigma^2$ seperately, and set them to be 0, we can get the MLE of these parameters. 
+Then by taking first order derivative of funtion $Q(\Psi|\Psi^{k+1})$ with respect to $\{\pi_j\}$, $\beta_j,j=1,\ldots,m$ and $\sigma^2$ seperately, and set them to be 0, under $\sum_{j=1}^m \pi_j=1$ we can solve the equations to get the MLE as:
+\begin{align*}
+\pi_j^{(k+1)}&=\frac{\sum_{i=1}^n p_{ij}^{(k+1)}}{n}\\
+\beta_j^{(k+1)}&=\frac{\sum_{i=1}^n x_ix_i'p_{ij}^{(k+1)}}{\sum_{i=1}^n x_ip_{ij}^{(k+1)}y_i}, j=1,\ldots,m; \\
+\sigma^{2^{(k+1)}}&=\frac{\sum_{j=1}^m \sum_{i=1}^n p_{ij}^{(k+1)}(y_i-x_i'\beta_j^{k+1})^2}{n}.
+\end{align*}
+For each time's iteration, we at first update $p_{ij}^{(k+1)}$ based on $\Psi^{(k)}$, then use it to get $\Psi^{(k+1)}$ and compute the distance between $\Psi^{(k)}$ and $\Psi^{(k+1)}$. This procedure will continue until the distance is less than a pre-specified convergence tolerance or the iteration number attain the specified maximum iteration number. 
+
 
 ## Implement this algorithm in R
 ```{r}
