@@ -57,11 +57,34 @@ p_{ij}^{(k+1)}&=E(x_{ij}|x_i,y_i,\Psi^{k})\\
 &=\frac{\pi_j^{(k)}\phi(y_i-x_i'\beta_j;0,\sigma^{2(k)})}{\sum_{j=1}^m \pi_j^{(k)}\phi(y_i-x_i'\beta_j;0,\sigma^{2(k)})}.
 \end{align*}
 
-Then by taking first order derivative of funtion $Q(\Psi|\Psi^{k+1})$ with respect to $\{\pi_j\}$, $\beta_j,j=1,\ldots,m$ and $\sigma^2$ seperately, and set them to be 0, under $\sum_{j=1}^m \pi_j=1$ we can solve the equations to get the MLE as:
+Then by taking first order derivative of funtion $Q(\Psi|\Psi^{k+1})$ with respect to $\{\pi_j\}$, $\beta_j,j=1,\ldots,m$ and $\sigma^2$ seperately, and set them to be 0, under $\sum_{j=1}^m \pi_j=1$ we can solve the equations to get the MLE. Based on the form of $Q(\Psi|\Psi^{k+1})$ and the density function of normal distribution, we have
+$$
+Q(\Psi|\Psi^{k+1})=\sum_i \sum_j p_{ij}^{(k+1)}\log{\pi_j}-\frac{1}{2}\sum_i \sum_j p_{ij}^{(k+1)}\ln \sigma^2 -\frac{1}{2\sigma^2}\sum_i \sum_j  p_{ij}^{(k+1)} (y_i-x_i'\beta_j)^2+C,
+$$
+where $C$ is a constant. For the estimation of $\pi_j$'s, since we have the constraint $\sum_j \pi_j=1$, we can use lagrange multiplier method to solve it. Moreover, only the first term of Q function contains $\pi_j$'s, it suffices to maximize $\sum_i \sum_j p_{ij}^{(k+1)}\log{\pi_j}$ under the linear constant on $\pi_j$'s, i.e., we want to solve
+$$
+\sum_j \sum_i p_{ij}^{(k+1)}\log{\pi_j}-\lambda (\sum_j \pi_j -1), 
+$$
+where $\lambda$ is the Lagrange multiplier. We take the first derivative to the above function with respect to each $\pi_j$ and $\lambda$, respectively. We have
+$$
+\sum_j \pi_j=1 \ \text{also} \ \frac{\sum_i p_{ij}^{(k+1)}}{\pi_j}-\lambda=0,\ j=1,\ldots,m. 
+$$
+Then we have $\lambda=\sum_i \sum_j p_{ij}^{(k+1)}=n$, and $\pi_j=\sum_i p_{ij}^{(k+1)}/\lambda=\sum_i p_{ij}^{(k+1)}/n$.
+
+Then we consider the other parameters. Take first derivative to Q with respect to $\beta_j$ and set it to 0, we have
+$$
+\sum_i p_{ij}^{(k+1)}(x_iy_i-x_ix_i'\beta_j)=0,
+$$
+thus we have $\beta_j^{(k+1)}=(\sum_{i=1}^n x_ix_i'p_{ij}^{(k+1)})^{-1} \sum_{i=1}^n x_ip_{ij}^{(k+1)}y_i, j=1,\ldots,m$. As for $\sigma^2$, we have
+$$
+\frac{\partial Q}{\partial \sigma^2}=-\frac{n}{2\sigma^2}+\frac{1}{2(\sigma^2)^2}\sum_i \sum_j p_{ij}^{(k+1)}(y_i-x_i'\beta_j)^2=0,
+$$
+so we have $\sigma^{2^{(k+1)}}=\frac{\sum_{j=1}^m \sum_{i=1}^n p_{ij}^{(k+1)}(y_i-x_i'\beta_j^{(k+1)})^2}{n}.$
+In summary, we have
 \begin{align*}
 \pi_j^{(k+1)}&=\frac{\sum_{i=1}^n p_{ij}^{(k+1)}}{n}\\
-\beta_j^{(k+1)}&=\frac{\sum_{i=1}^n x_ix_i'p_{ij}^{(k+1)}}{\sum_{i=1}^n x_ip_{ij}^{(k+1)}y_i}, j=1,\ldots,m; \\
-\sigma^{2^{(k+1)}}&=\frac{\sum_{j=1}^m \sum_{i=1}^n p_{ij}^{(k+1)}(y_i-x_i'\beta_j^{k+1})^2}{n}.
+\beta_j^{(k+1)}&=(\sum_{i=1}^n x_ix_i'p_{ij}^{(k+1)})^{-1} \sum_{i=1}^n x_ip_{ij}^{(k+1)}y_i, j=1,\ldots,m; \\
+\sigma^{2^{(k+1)}}&=\frac{\sum_{j=1}^m \sum_{i=1}^n p_{ij}^{(k+1)}(y_i-x_i'\beta_j^{(k+1)})^2}{n}.
 \end{align*}
 For each time's iteration, we at first update $p_{ij}^{(k+1)}$ based on $\Psi^{(k)}$, then use it to get $\Psi^{(k+1)}$ and compute the distance between $\Psi^{(k)}$ and $\Psi^{(k+1)}$. This procedure will continue until the distance is less than a pre-specified convergence tolerance or the iteration number attain the specified maximum iteration number. 
 
